@@ -1,6 +1,6 @@
 # Assetor
 
-a tool designed to simplify the management of video assets, featuring a daemon that
+A tool designed to simplify the management of video assets, featuring a daemon that
 automatically downloads video files from any remote source and stores them in a local
 directory or network, making it easier to organize, access, and utilize video assets
 for various projects and applications.
