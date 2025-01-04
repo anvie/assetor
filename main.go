@@ -27,12 +27,14 @@ type WebhookResponse struct {
 }
 
 type ReportPayload struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
+	ID    string `json:"id"`
+	URL   string `json:"url"`
+	Error string `json:"error,omitempty"`
 }
 
 func downloadVideo(url string, id string) (string, error) {
-	outputTemplate := filepath.Join("downloads", fmt.Sprintf("%s_%%(id)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
+	outputTemplate := filepath.Join("downloads",
+		fmt.Sprintf("%s_%%(id)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
 
 	cmd := exec.Command("yt-dlp", "--cookies",
 		os.Getenv("COOKIES_FILE"), "-o", outputTemplate, url)
@@ -108,6 +110,44 @@ func reportDownloadSuccess(id, file string) {
 	}
 }
 
+func reportDownloadFailed(id string, err error) {
+	reportURL := os.Getenv("REPORT_WEBHOOK_URL")
+
+	payload := ReportPayload{
+		ID:    id,
+		URL:   "",
+		Error: err.Error(),
+	}
+
+	log.Printf("Reporting download failure for ID: %s, error: %s", id, err)
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Failed to marshal report payload: %s", err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reportURL, bytes.NewBuffer(data))
+	if err != nil {
+		log.Printf("Failed to create report request: %s", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to send report request: %s", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Report request failed with status: %d", resp.StatusCode)
+	}
+}
+
 func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -129,6 +169,7 @@ func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		file, err := downloadVideo(url, id)
 		if err != nil {
 			log.Printf("Failed to download video: %s", err)
+			reportDownloadFailed(id, err)
 			return
 		}
 
