@@ -58,7 +58,7 @@ func downloadVideo(url string, id string) (string, error) {
 	}
 	log.Println("outputBuffer: ", outputBuffer.String())
 
-	re := regexp.MustCompile(`(downloads/[\w_]*?_[\w]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov))`)
+	re := regexp.MustCompile(`(downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov))`)
 	matches := re.FindStringSubmatch(outputBuffer.String())
 	log.Println("matches: ", matches)
 	if len(matches) > 0 {
@@ -219,7 +219,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.4")
+	fmt.Println("Assetor v0.0.5")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
