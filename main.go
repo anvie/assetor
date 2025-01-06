@@ -213,13 +213,13 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	// w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeFile(w, r, filePath)
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.5")
+	fmt.Println("Assetor v0.0.6")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
