@@ -74,7 +74,7 @@ func downloadVideo(url string, id string) (string, error) {
 	return "", fmt.Errorf("failed to parse output file name from yt-dlp output")
 }
 
-func reportDownloadSuccess(id, file string) {
+func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
 	reportURL := os.Getenv("REPORT_WEBHOOK_URL")
 
 	// format file to be downloadable url
@@ -83,8 +83,9 @@ func reportDownloadSuccess(id, file string) {
 	url := fmt.Sprintf("%s/%s", os.Getenv("DOWNLOAD_BASE_URL"), fileName)
 
 	payload := ReportPayload{
-		ID:  id,
-		URL: url,
+		ID:            id,
+		URL:           url,
+		WebhookParams: webHookParams,
 	}
 
 	log.Printf("Reporting download success for ID: %s, url: %s", id, url)
@@ -182,7 +183,7 @@ func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Downloaded video for ID: %s, file: %s", id, file)
 
-		reportDownloadSuccess(id, file)
+		reportDownloadSuccess(id, file, webhookParams)
 	}(req.URL, req.ID, req.WebhookParams)
 
 	resp := WebhookResponse{
