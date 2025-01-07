@@ -64,7 +64,7 @@ func downloadVideo(url string, id string) (string, error) {
 	}
 	log.Println("outputBuffer: ", outputBuffer.String())
 
-	re := regexp.MustCompile(`(downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov))`)
+	re := regexp.MustCompile(`(downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov|mkv))`)
 	matches := re.FindStringSubmatch(outputBuffer.String())
 	log.Println("matches: ", matches)
 	if len(matches) > 0 {
