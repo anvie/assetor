@@ -16,6 +16,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type WebhookParams struct {
+	ChannelID string `json:"channelId"`
+	Trim      string `json:"trim"`
+}
+
 type WebhookRequest struct {
 	URL           string        `json:"url"`
 	ID            string        `json:"id"`
@@ -25,10 +30,6 @@ type WebhookRequest struct {
 type WebhookResponse struct {
 	Message string `json:"message"`
 	Details string `json:"details,omitempty"`
-}
-
-type WebhookParams struct {
-	ChannelID string `json:"channelId"`
 }
 
 type ReportPayload struct {
@@ -227,7 +228,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.7")
+	fmt.Println("Assetor v0.0.8")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
