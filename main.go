@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -40,39 +41,55 @@ type ReportPayload struct {
 }
 
 func downloadVideo(url string, id string) (string, error) {
+	const maxRetries = 3
+	const timeoutDuration = 10 * time.Minute
 	outputTemplate := filepath.Join("downloads",
 		fmt.Sprintf("%s_%%(id)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
 
-	cmd := exec.Command("yt-dlp", "--cookies",
-		os.Getenv("COOKIES_FILE"), "-o", outputTemplate, url)
-	outputBuffer := &bytes.Buffer{}
-	cmd.Stdout = outputBuffer
-	cmd.Stderr = os.Stderr
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		log.Printf("Attempt %d to download video: %s", attempt, url)
 
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Run()
-	}()
+		cmd := exec.Command("yt-dlp", "--cookies",
+			os.Getenv("COOKIES_FILE"), "-o", outputTemplate, url)
 
-	select {
-	case err := <-done:
-		if err != nil {
-			return "", err
+		outputBuffer := &bytes.Buffer{}
+		errorBuffer := &bytes.Buffer{}
+
+		cmd.Stdout = outputBuffer
+		cmd.Stderr = errorBuffer
+
+		done := make(chan error, 1)
+		go func() {
+			done <- cmd.Run()
+		}()
+
+		select {
+		case err := <-done:
+			if err != nil {
+				log.Printf("Error on attempt %d: %s", attempt, errorBuffer.String())
+				lastErr = fmt.Errorf("command failed: %w.\n%s", err, errorBuffer.String())
+				continue
+			}
+
+			log.Println("Command output: ", outputBuffer.String())
+
+			re := regexp.MustCompile(`downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov|mkv)`)
+			matches := re.FindStringSubmatch(outputBuffer.String())
+			if len(matches) > 0 {
+				log.Printf("Successfully parsed file name: %s", matches[0])
+				return matches[0], nil
+			}
+
+			lastErr = errors.New("failed to parse output file name from yt-dlp output")
+		case <-time.After(timeoutDuration):
+			_ = cmd.Process.Kill()
+			log.Printf("Attempt %d timed out", attempt)
+			lastErr = errors.New("download timed out")
 		}
-	case <-time.After(10 * time.Minute):
-		cmd.Process.Kill()
-		return "", fmt.Errorf("download timed out")
-	}
-	log.Println("outputBuffer: ", outputBuffer.String())
-
-	re := regexp.MustCompile(`(downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov|mkv))`)
-	matches := re.FindStringSubmatch(outputBuffer.String())
-	log.Println("matches: ", matches)
-	if len(matches) > 0 {
-		return matches[0], nil
 	}
 
-	return "", fmt.Errorf("failed to parse output file name from yt-dlp output")
+	return "", fmt.Errorf("all attempts failed: %w", lastErr)
 }
 
 func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
@@ -228,7 +245,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.8")
+	fmt.Println("Assetor v0.0.10")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
