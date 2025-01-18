@@ -41,7 +41,7 @@ type ReportPayload struct {
 }
 
 func downloadVideo(url string, id string) (string, error) {
-	const maxRetries = 3
+	const maxRetries = 5
 	const timeoutDuration = 10 * time.Minute
 	outputTemplate := filepath.Join("downloads",
 		fmt.Sprintf("%s_%%(id)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
@@ -50,7 +50,7 @@ func downloadVideo(url string, id string) (string, error) {
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		log.Printf("Attempt %d to download video: %s", attempt, url)
 
-		cmd := exec.Command("yt-dlp", "--cookies",
+		cmd := exec.Command("/usr/bin/yt-dlp", "--cookies",
 			os.Getenv("COOKIES_FILE"), "-o", outputTemplate, url)
 
 		outputBuffer := &bytes.Buffer{}
@@ -67,8 +67,18 @@ func downloadVideo(url string, id string) (string, error) {
 		select {
 		case err := <-done:
 			if err != nil {
-				log.Printf("Error on attempt %d: %s", attempt, errorBuffer.String())
-				lastErr = fmt.Errorf("command failed: %w.\n%s", err, errorBuffer.String())
+				log.Printf("Command failed on attempt %d: %s", attempt, err)
+				log.Printf("Error buffer output: %s", errorBuffer.String())
+				lastErr = fmt.Errorf("command failed: %w", err)
+				time.Sleep(1000 * time.Millisecond)
+				continue
+			}
+
+			if outputBuffer.Len() == 0 {
+				log.Printf("Empty output buffer on attempt %d", attempt)
+				log.Printf("Error buffer output: %s", errorBuffer.String())
+				lastErr = errors.New("output buffer is empty")
+				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
 
