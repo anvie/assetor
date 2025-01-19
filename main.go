@@ -44,7 +44,7 @@ func downloadVideo(url string, id string) (string, error) {
 	const maxRetries = 5
 	const timeoutDuration = 10 * time.Minute
 	outputTemplate := filepath.Join("downloads",
-		fmt.Sprintf("%s_%%(id)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
+		fmt.Sprintf("%s_%%(id)s_%%(width)sx%%(height)s_%%(duration>%%H-%%M-%%S)s.%%(ext)s", id))
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
