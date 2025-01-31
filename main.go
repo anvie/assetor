@@ -250,7 +250,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", "video/mp4")
 	http.ServeFile(w, r, filePath)
 }
 
