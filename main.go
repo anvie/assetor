@@ -21,6 +21,7 @@ type WebhookParams struct {
 	ChannelID string `json:"channelId"`
 	Trim      string `json:"trim"`
 	Base      string `json:"base"`
+	Url       string `json:"url",omitempty`
 }
 
 type WebhookRequest struct {
@@ -105,6 +106,9 @@ func downloadVideo(url string, id string) (string, error) {
 
 func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
 	reportURL := os.Getenv("REPORT_WEBHOOK_URL")
+	if webHookParams.Url != "" {
+		reportURL = webHookParams.Url
+	}
 
 	// format file to be downloadable url
 	//
@@ -148,6 +152,9 @@ func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
 
 func reportDownloadFailed(id string, webHookParams WebhookParams, err error) {
 	reportURL := os.Getenv("REPORT_WEBHOOK_URL")
+	if webHookParams.Url != "" {
+		reportURL = webHookParams.Url
+	}
 
 	payload := ReportPayload{
 		ID:            id,
@@ -270,7 +277,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.12")
+	fmt.Println("Assetor v0.0.13")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
