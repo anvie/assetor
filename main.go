@@ -21,7 +21,7 @@ type WebhookParams struct {
 	ChannelID string `json:"channelId"`
 	Trim      string `json:"trim"`
 	Base      string `json:"base"`
-	Url       string `json:"url",omitempty`
+	Url       string `json:"url,omitempty"`
 }
 
 type WebhookRequest struct {
@@ -52,8 +52,22 @@ func downloadVideo(url string, id string) (string, error) {
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		log.Printf("Attempt %d to download video: %s", attempt, url)
 
-		cmd := exec.Command("/usr/bin/yt-dlp", "--cookies",
-			os.Getenv("COOKIES_FILE"), "-o", outputTemplate, url)
+		params := []string{}
+
+		if os.Getenv("YTDL_PARAMS") != "" {
+			params = strings.Split(os.Getenv("YTDL_PARAMS"), " ")
+		}
+		// if url not contains x.com then add cookies, (temporary workaround)
+		if !strings.Contains(url, "x.com") {
+			params = append(params, "--cookies",
+				os.Getenv("COOKIES_FILE"))
+		} else {
+			params = append(params, "--extractor-arg", "twitter:api=legacy")
+		}
+		params = append(params, "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+		params = append(params, "-o", outputTemplate, url)
+
+		cmd := exec.Command("/usr/bin/yt-dlp", params...)
 
 		outputBuffer := &bytes.Buffer{}
 		errorBuffer := &bytes.Buffer{}
@@ -86,7 +100,7 @@ func downloadVideo(url string, id string) (string, error) {
 
 			log.Println("Command output: ", outputBuffer.String())
 
-			re := regexp.MustCompile(`downloads/[\w_]*?_[\w-_]*?_\d\d-\d\d-\d\d\.(mp4|webm|mov|mkv)`)
+			re := regexp.MustCompile(`downloads/[\w_]*?_[\w-_]*?_(\d\d-\d\d-\d\d|NA)\.(mp4|webm|mov|mkv|png|jpg|jpeg)`)
 			matches := re.FindStringSubmatch(outputBuffer.String())
 			if len(matches) > 0 {
 				log.Printf("Successfully parsed file name: %s", matches[0])
@@ -122,6 +136,7 @@ func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
 	}
 
 	log.Printf("Reporting download success for ID: %s, url: %s", id, url)
+	log.Printf("Report URL: %s", reportURL)
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -204,9 +219,12 @@ func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.URL == "" || req.ID == "" {
-		http.Error(w, "Missing 'url' or 'id' in payload", http.StatusBadRequest)
+	if req.URL == "" {
+		http.Error(w, "Missing 'url' in payload", http.StatusBadRequest)
 		return
+	}
+	if req.ID == "" {
+		http.Error(w, "Missing 'id' in payload", http.StatusBadRequest)
 	}
 
 	go func(url, id string, webhookParams WebhookParams) {
@@ -277,7 +295,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.13")
+	fmt.Println("Assetor v0.0.18")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
