@@ -107,6 +107,21 @@ func downloadVideo(url string, id string) (string, error) {
 				return matches[0], nil
 			}
 
+			re = regexp.MustCompile(`downloads/.*?_[\w-_]*?_(\d\d-\d\d-\d\d|NA)\.(mp4|webm|mov|mkv|png|jpg|jpeg)`)
+			matches = re.FindStringSubmatch(outputBuffer.String())
+			if len(matches) > 0 {
+				log.Printf("Successfully parsed file name: %s", matches[0])
+				return matches[0], nil
+			}
+
+			// check if file already downloaded
+			re = regexp.MustCompile(`(downloads/.*?_[\w-_]*?_(\d\d-\d\d-\d\d|NA)\.(mp4|webm|mov|mkv|png|jpg|jpeg)).*? has already been downloaded`)
+			matches = re.FindStringSubmatch(outputBuffer.String())
+			if len(matches) > 1 {
+				log.Printf("File already downloaded: %s", matches[1])
+				return matches[1], nil
+			}
+
 			lastErr = errors.New("failed to parse output file name from yt-dlp output")
 		case <-time.After(timeoutDuration):
 			_ = cmd.Process.Kill()
@@ -290,12 +305,51 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Range")
 
 	// w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	w.Header().Set("Content-Type", "video/mp4")
+
+	// check file type and set content type
+	ext := strings.ToLower(filepath.Ext(fileName))
+
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif", ".bmp":
+		var imageType string
+		switch ext {
+		case ".jpg", ".jpeg":
+			imageType = "jpeg"
+		case ".png":
+			imageType = "png"
+		case ".gif":
+			imageType = "gif"
+		case ".bmp":
+			imageType = "bmp"
+		}
+		w.Header().Set("Content-Type", "image/"+imageType)
+	default:
+		switch ext {
+		case ".mp4", ".avi", ".mov", ".flv", ".mkv":
+			var videoType string
+			switch ext {
+			case ".mp4":
+				videoType = "mp4"
+			case ".avi":
+				videoType = "x-msvideo"
+			case ".mov":
+				videoType = "quicktime"
+			case ".flv":
+				videoType = "x-flv"
+			case ".mkv":
+				videoType = "x-matroska"
+			}
+			w.Header().Set("Content-Type", "video/"+videoType)
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+	}
+
 	http.ServeFile(w, r, filePath)
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.18")
+	fmt.Println("Assetor v0.0.19")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
