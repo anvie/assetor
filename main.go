@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,10 +19,11 @@ import (
 )
 
 type WebhookParams struct {
-	ChannelID string `json:"channelId"`
-	Trim      string `json:"trim"`
-	Base      string `json:"base"`
-	Url       string `json:"url,omitempty"`
+	ChannelID   string `json:"channelId"`
+	Trim        string `json:"trim"`
+	Base        string `json:"base"`
+	Url         string `json:"url,omitempty"`
+	ExtraParams string `json:"extraParams,omitempty"`
 }
 
 type WebhookRequest struct {
@@ -143,7 +145,11 @@ func reportDownloadSuccess(id, file string, webHookParams WebhookParams) {
 	// format file to be downloadable url
 	//
 	fileName := strings.ReplaceAll(file, "downloads/", "download/")
-	url := fmt.Sprintf("%s/%s", os.Getenv("DOWNLOAD_BASE_URL"), fileName)
+	extraParams := webHookParams.ExtraParams
+	if extraParams != "" {
+		extraParams = "?" + extraParams
+	}
+	url := fmt.Sprintf("%s/%s%s", os.Getenv("DOWNLOAD_BASE_URL"), fileName, extraParams)
 
 	payload := ReportPayload{
 		ID:            id,
@@ -243,8 +249,8 @@ func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing 'id' in payload", http.StatusBadRequest)
 	}
 
-	go func(url, id string, webhookParams WebhookParams) {
-		file, err := downloadVideo(url, id)
+	go func(urlStr, id string, webhookParams WebhookParams) {
+		file, err := downloadVideo(urlStr, id)
 		if err != nil {
 			log.Printf("Failed to download video: %s", err)
 			reportDownloadFailed(id, webhookParams, err)
@@ -253,6 +259,14 @@ func requestToDownloadHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Downloaded video for ID: %s, file: %s", id, file)
 
+		if webhookParams.ExtraParams == "" {
+			// Extract query parameters from the URL
+			parsedURL, err := url.Parse(urlStr)
+			if err == nil {
+				queryParams := parsedURL.Query()
+				webhookParams.ExtraParams = queryParams.Encode()
+			}
+		}
 		reportDownloadSuccess(id, file, webhookParams)
 	}(req.URL, req.ID, req.WebhookParams)
 
@@ -350,7 +364,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.0.20")
+	fmt.Println("Assetor v0.1.1")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
