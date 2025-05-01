@@ -118,7 +118,7 @@ func downloadVideo(url string, id string) (string, error) {
 			}
 
 			// check if file already downloaded
-			re = regexp.MustCompile(`(downloads/.*?_[\w-_]*?_(\d\d-\d\d-\d\d|NA)\.(mp4|webm|mov|mkv|png|jpg|jpeg)).*? has already been downloaded`)
+			re = regexp.MustCompile(`(downloads/.*?_.*?.(mp4|webm|mov|mkv|png|jpg|jpeg)).*? has already been downloaded`)
 			matches = re.FindStringSubmatch(outputBuffer.String())
 			if len(matches) > 1 {
 				log.Printf("File already downloaded: %s", matches[1])
@@ -364,7 +364,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.1.1")
+	fmt.Println("Assetor v0.1.2")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
