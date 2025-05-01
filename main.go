@@ -67,8 +67,11 @@ func downloadVideo(url string, id string) (string, error) {
 			params = append(params, "--extractor-arg", "twitter:api=legacy")
 		}
 		params = append(params, "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-		params = append(params, "-o", outputTemplate, url)
 		params = append(params, "--max-filesize", "90M")
+		params = append(params, "-f", "bestvideo[height=720]+bestaudio/bestvideo[height>720]+bestaudio/best")
+		params = append(params, "-S", "res")
+		params = append(params, "--merge-output-format", "mp4")
+		params = append(params, "-o", outputTemplate, url)
 
 		cmd := exec.Command("/usr/bin/yt-dlp", params...)
 
@@ -364,7 +367,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.1.2")
+	fmt.Println("Assetor v0.1.3")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
