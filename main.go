@@ -73,7 +73,11 @@ func downloadVideo(url string, id string) (string, error) {
 		params = append(params, "--merge-output-format", "mp4")
 		params = append(params, "-o", outputTemplate, url)
 
-		cmd := exec.Command("/usr/bin/yt-dlp", params...)
+		ytdlpBin := "/usr/bin/yt-dlp"
+		if os.Getenv("YTDLP_BIN") != "" {
+			ytdlpBin = os.Getenv("YTDLP_BIN")
+		}
+		cmd := exec.Command(ytdlpBin, params...)
 
 		outputBuffer := &bytes.Buffer{}
 		errorBuffer := &bytes.Buffer{}
