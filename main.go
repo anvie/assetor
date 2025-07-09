@@ -77,6 +77,10 @@ func downloadVideo(url string, id string) (string, error) {
 		if os.Getenv("YTDLP_BIN") != "" {
 			ytdlpBin = os.Getenv("YTDLP_BIN")
 		}
+		// log command + params
+		commandAndParams := fmt.Sprintf("%s %s", ytdlpBin, strings.Join(params, " "))
+		log.Printf("Running command: %s", commandAndParams)
+
 		cmd := exec.Command(ytdlpBin, params...)
 
 		outputBuffer := &bytes.Buffer{}
@@ -108,7 +112,26 @@ func downloadVideo(url string, id string) (string, error) {
 				continue
 			}
 
-			log.Println("Command output: ", outputBuffer.String())
+			outputStr := outputBuffer.String()
+
+			log.Println("Command output: ", outputStr)
+
+			if strings.Contains(outputStr, "File is larger than max-filesize") {
+				log.Println("File is larger than max-filesize, skipping download")
+				return "", fmt.Errorf("file is larger than 90M")
+			}
+
+			// check apakah dapat pesan error/abort?
+			if strings.Contains(outputStr, "Aborting") {
+				log.Printf("Download aborted on attempt %d", attempt)
+				var errorLine string
+				for _, line := range strings.Split(outputStr, "\n") {
+					if strings.Contains(line, "Aborting") {
+						errorLine = strings.TrimSpace(line)
+					}
+				}
+				return "", fmt.Errorf("download abborted: %s", errorLine)
+			}
 
 			re := regexp.MustCompile(`downloads/[\w_]*?_[\w-_]*?_(\d\d-\d\d-\d\d|NA)\.(mp4|webm|mov|mkv|png|jpg|jpeg)`)
 			matches := re.FindStringSubmatch(outputBuffer.String())
@@ -371,7 +394,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.1.3")
+	fmt.Println("Assetor v0.1.6")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
