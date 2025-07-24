@@ -63,8 +63,6 @@ func downloadVideo(url string, id string) (string, error) {
 		if !strings.Contains(url, "x.com") {
 			params = append(params, "--cookies",
 				os.Getenv("COOKIES_FILE"))
-		} else {
-			params = append(params, "--extractor-arg", "twitter:api=legacy")
 		}
 		params = append(params, "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
 		params = append(params, "--max-filesize", "90M")
