@@ -392,7 +392,7 @@ func downloadFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Assetor v0.1.6")
+	fmt.Println("Assetor v0.1.7")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
