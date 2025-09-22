@@ -78,8 +78,18 @@ func downloadVideo(url string, id string) (string, error) {
 		if os.Getenv("YTDLP_BIN") != "" {
 			ytdlpBin = os.Getenv("YTDLP_BIN")
 		}
+
 		// log command + params
-		commandAndParams := fmt.Sprintf("%s %s", ytdlpBin, strings.Join(params, " "))
+		paramsQuoted := make([]string, len(params))
+		for i, p := range params {
+			if strings.HasPrefix(p, "-") {
+				paramsQuoted[i] = p
+				continue
+			}
+			paramsQuoted[i] = fmt.Sprintf("'%s'", p)
+		}
+
+		commandAndParams := fmt.Sprintf("%s %s", ytdlpBin, strings.Join(paramsQuoted, " "))
 		log.Printf("Running command: %s", commandAndParams)
 
 		cmd := exec.Command(ytdlpBin, params...)
